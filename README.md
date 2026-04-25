@@ -16,6 +16,7 @@ The stack
 1. agents
 1. scion
 1. more kubernetes
+1. vtol, for fun
 
 
 ## dgx spark by another name would smell as sweet
@@ -113,6 +114,18 @@ Then qwen-3.6 came out and it was even better, but neither was fast enough
 for interactive coding sessions, that was until sparky came in.
 
 
+### benchmarks
+
+Check out the `./util/llama-bench.sh` to download and benchmark a set of models.
+
+I'm not going to put any tables here, but I will say:
+
+1. it is usable for interactive session at ~ 1000+ token parsing && 25+ token generating
+1. the `unsloth/Qwen3.6-35B-A3B-GGUF:Q8_K_XL` model is running at ~1600/40
+1. prompt caching makes agents even more responsive
+1. with background agents the speeds may become less important
+
+
 ### llama-cpp setup
 
 I'm mainly using llama-cpp, makes it the easier to use Unsloth's quants.
@@ -134,7 +147,7 @@ cmake --build build --config Release -j --clean-first
 ./build/bin/llama-server -hf unsloth/Qwen3.6-35B-A3B-GGUF:Q8_K_XL --host 0.0.0.0 --port 8080
 ```
 
-Check out the `./scripts/llama.sh` to download and benchmark a set of models.
+This repo also has a `./util/llama-server.sh` you can use to run a model more conveniently.
 
 ### vllm setup
 
@@ -223,9 +236,12 @@ Scion is a new Google Cloud open source project for running async agents.
 Install Scion
 
 ```sh
+# get repo
 git clone https://github.com/GoogleCloudPlatform/scion
 cd scion
-go install ./cmd/scion
+
+# build web/cli
+make all
 ```
 
 Custom buildkitd config
@@ -313,9 +329,11 @@ scion attach hello-go
 ```
 
 
-### scion agents running on kubernetes
+### scion agents running in kubernetes
 
-Prepare kubernetes
+You can have the agent containers run in a k8s cluster instead of docker.
+
+First, prepare kubernetes
 
 ```sh
 # create the agent namespace
@@ -324,11 +342,11 @@ kubectl create ns scion-agents
 # update the host IP address
 vim ./util/llama-cpp.yaml
 
-# from this repo, service for external (host) llama.cpp server
+# service to expose (host) llama.cpp server into cluster
 kubectl apply -n scion-agents -f ./util/llama-cpp.yaml
 ```
 
-Run a remote agent
+Then, run a remote agent
 
 ```sh
 # start some work
@@ -347,7 +365,41 @@ scion attach hello-py
 scion sync from hello-py --profile remote
 ```
 
+There are all of the typical k8s config and controls you expect for a pod.
+These can be different per agent and layered so you only need to set
+particulars and can inherit good defaults.
+
+### using the hub
+
+Scion has a hub with an API and Web app,
+and additionally allows for more complex messaging.
+
+`./util/scion-server.sh`
+
+Overly simplified (https://googlecloudplatform.github.io/scion/concepts/)
+
+- `hub` is the orchestration layer of users, projects, and agents
+- `agent` is the execution of an LLM in a loop inside a container
+- `grove` is a git repo, basically a project, agents work on these
+- `profile` defines an execution environment, runtime + harness overrides
+- `harness` wraps a tool like opencode or claude for use in scion
+- `template` is a blueprint for agents and configures many things, this is where things get personal
+
+With the `hub` running, we can now create a `grove`.
+
+### custom runner images
+
+Let's give an agent access to kubernetes from within kubernetes while running remotely.
+
 
 ## more kubernetes
 
 We can run more on kubernetes
+
+- registry
+- hub
+- agents (already are)
+
+
+
+## vtol, for fun
