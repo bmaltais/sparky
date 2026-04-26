@@ -212,8 +212,8 @@ opencode --model llama.cpp/Qwen3.6-35B-A3B
         "Qwen3.6-35B-A3B": {
           "name": "Qwen3.6-35B-A3B (local)",
           "limit": {
-            "context": 128000,
-            "output": 65536
+            "context": 262144,
+            "output": 32768
           }
         }
       }
@@ -385,7 +385,20 @@ Overly simplified (https://googlecloudplatform.github.io/scion/concepts/)
 - `harness` wraps a tool like opencode or claude for use in scion
 - `template` is a blueprint for agents and configures many things, this is where things get personal
 
-With the `hub` running, we can now create a `grove`.
+With the `hub` running, we can now do some reconfiguring and create a `grove`.
+
+```sh
+# set up scion to use the hub
+scion config set hub.enabled true
+
+# give it access to github
+scion hub secret set GITHUB_TOKEN <your-pat>
+
+# create a grove from a repo
+scion hub grove create git@github.com:verdverm/sparky.git --slug sparky
+
+# ask an agent about the project
+```
 
 ### custom runner images
 
