@@ -1,0 +1,24 @@
+[Unit]
+Description=Qwen3.6-35B-A3B Server
+After=network.target
+
+[Service]
+Type=simple
+User=tony
+Group=tony
+Environment=HOME=/home/tony
+Environment=MODEL=Qwen3.6-35B-A3B-GGUF
+Environment=QUANT=UD-Q8_K_XL
+Environment=PORT=8080
+Environment=PATH=/home/tony/.local/bin:/home/tony/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/usr/local/go/bin:/home/tony/go/bin:/usr/local/cuda/bin
+WorkingDirectory=/home/tony
+ExecStart=/home/tony/llama.cpp/build/bin/llama-server \
+  -hf unsloth/${MODEL}:${QUANT} \
+  --host 0.0.0.0 \
+  --port ${PORT}
+MemoryMax=48G
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

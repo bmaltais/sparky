@@ -1,0 +1,23 @@
+[Unit]
+Description=Scion server (hub + web + runtime-broker)
+After=network.target
+
+[Service]
+Type=simple
+User=tony
+Group=tony
+Environment=HOME=/home/tony
+Environment=PATH=/home/tony/.local/bin:/home/tony/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/usr/local/go/bin:/home/tony/go/bin:/usr/local/cuda/bin
+WorkingDirectory=/home/tony/.scion
+ExecStart=/home/tony/.local/bin/scion server start \
+  --host 0.0.0.0 \
+  --enable-hub \
+  --enable-web --web-port 9810 \
+  --enable-runtime-broker \
+  --foreground
+MemoryMax=4G
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
