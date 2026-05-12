@@ -1,0 +1,85 @@
+---
+- name: Check if llama.cpp MTP binary exists
+  ansible.builtin.stat:
+    path: "{{ llama_cpp_mtp_build_path }}"
+  register: _llama_cpp_mtp_binary
+
+- name: Clone and build llama.cpp MTP
+  when: not _llama_cpp_mtp_binary.stat.exists
+  block:
+    - name: Clone llama.cpp MTP repository
+      ansible.builtin.git:
+        repo: "{{ llama_cpp_mtp_git_repo }}"
+        dest: "{{ llama_cpp_mtp_install_path }}"
+        version: "{{ llama_cpp_mtp_git_branch }}"
+        force: yes
+
+    - name: Build llama.cpp MTP (with CUDA support)
+      ansible.builtin.command:
+        cmd: >-
+          cmake -B build
+          -DGGML_CUDA=ON
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+        chdir: "{{ llama_cpp_mtp_install_path }}"
+      args:
+        creates: "{{ llama_cpp_mtp_install_path }}/build/CMakeCache.txt"
+
+    - name: Compile llama.cpp MTP
+      ansible.builtin.command:
+        cmd: cmake --build build --config Release
+        chdir: "{{ llama_cpp_mtp_install_path }}"
+      become: no
+      args:
+        creates: "{{ llama_cpp_mtp_build_path }}"
+
+- name: Generate port sequence
+  ansible.builtin.set_fact:
+    _llama_cpp_mtp_ports: "{{ range(llama_cpp_mtp_port_start | int, (llama_cpp_mtp_port_start | int) + (llama_cpp_mtp_instances | length)) | list }}"
+
+- name: Initialize instance list
+  ansible.builtin.set_fact:
+    _llama_cpp_mtp_instances: []
+
+- name: Build instance list with ports
+  ansible.builtin.set_fact:
+    _llama_cpp_mtp_instances: "{{ _llama_cpp_mtp_instances + [item[0] | combine({'port': item[0].port | default(item[1])})] }}"
+  loop: "{{ llama_cpp_mtp_instances | zip(_llama_cpp_mtp_ports) | list }}"
+
+- name: Find existing llama-cpp-mtp services
+  ansible.builtin.find:
+    paths: /etc/systemd/system
+    patterns: "llama-cpp-mtp-*.service"
+    use_regex: true
+  register: _llama_cpp_mtp_existing
+
+- name: Remove stale llama-cpp-mtp service files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ _llama_cpp_mtp_existing.files }}"
+  loop_control:
+    label: "{{ item.path | regex_replace('.*/(llama-cpp-mtp-[^.]+)\\..*', '\\1') }}"
+  when: item.path | regex_replace('.*/(llama-cpp-mtp-[^.]+)\\..*', '\\1') not in (_llama_cpp_mtp_instances | map(attribute='name') | list)
+
+- name: Deploy systemd service files
+  ansible.builtin.template:
+    src: llama-cpp-mtp-server.service.j2
+    dest: "/etc/systemd/system/{{ item.name }}.service"
+    mode: "0644"
+  loop: "{{ _llama_cpp_mtp_instances }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Enable and start llama.cpp MTP services
+  ansible.builtin.systemd:
+    name: "{{ item.name }}"
+    state: started
+    enabled: yes
+  loop: "{{ _llama_cpp_mtp_instances }}"
+  loop_control:
+    label: "{{ item.name }}"

@@ -1,0 +1,27 @@
+---
+llama_cpp_enabled: false
+llama_cpp_user: tony
+llama_cpp_user_home: /home/tony
+llama_cpp_install_path: "{{ llama_cpp_user_home }}/llama.cpp"
+llama_cpp_build_path: "{{ llama_cpp_install_path }}/build/bin/llama-server"
+llama_cpp_port_start: 8080
+llama_cpp_git_repo: https://github.com/ggerganov/llama.cpp.git
+llama_cpp_git_branch: main
+
+llama_cpp_has_gpu: false
+llama_cpp_gpu_device: 0
+llama_cpp_default_gpu_layers: -1
+llama_cpp_default_memory_max: "32G"
+
+llama_cpp_default_threads: 0
+llama_cpp_default_threads_batch: 0
+llama_cpp_default_ctx_size: 32768
+
+llama_cpp_instances: []
+
+llama_cpp_default_temperature: 1.0
+llama_cpp_default_top_p: 0.95
+llama_cpp_default_top_k: 20
+llama_cpp_default_min_p: 0.0
+llama_cpp_default_presence_penalty: 1.5
+llama_cpp_default_repetition_penalty: 1.0

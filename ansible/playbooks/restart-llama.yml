@@ -1,0 +1,26 @@
+---
+- name: Restart all llama.cpp server instances
+  hosts: sparky
+  become: yes
+  tasks:
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Restart llama.cpp services
+      ansible.builtin.systemd:
+        name: "{{ item.name }}"
+        state: restarted
+      loop: "{{ llama_cpp_instances }}"
+      when: llama_cpp_instances | length > 0
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Restart llama.cpp MTP services
+      ansible.builtin.systemd:
+        name: "{{ item.name }}"
+        state: restarted
+      loop: "{{ llama_cpp_mtp_instances }}"
+      when: llama_cpp_mtp_instances | length > 0
+      loop_control:
+        label: "{{ item.name }}"

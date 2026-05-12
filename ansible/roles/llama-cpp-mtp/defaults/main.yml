@@ -1,0 +1,22 @@
+---
+llama_cpp_mtp_enabled: false
+llama_cpp_user: tony
+llama_cpp_user_home: /home/tony
+llama_cpp_mtp_install_path: "{{ llama_cpp_user_home }}/llama.cpp-mtp"
+llama_cpp_mtp_build_path: "{{ llama_cpp_mtp_install_path }}/build/bin/llama-server"
+llama_cpp_mtp_port_start: 8090
+llama_cpp_mtp_git_repo: https://github.com/am17an/llama.cpp.git
+llama_cpp_mtp_git_branch: mtp-clean
+
+llama_cpp_mtp_has_gpu: false
+llama_cpp_mtp_gpu_device: 0
+llama_cpp_mtp_default_gpu_layers: -1
+llama_cpp_mtp_default_memory_max: "32G"
+
+llama_cpp_mtp_default_threads: 0
+llama_cpp_mtp_default_threads_batch: 0
+llama_cpp_mtp_default_ctx_size: 32768
+
+llama_cpp_mtp_default_spec_draft_n_max: 3
+
+llama_cpp_mtp_instances: []

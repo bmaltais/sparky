@@ -1,0 +1,80 @@
+---
+llama_cpp_port_start: 8080
+llama_cpp_default_gpu_layers: -1
+llama_cpp_default_memory_max: "16G"
+llama_cpp_default_temperature: 1.0
+llama_cpp_default_top_p: 0.95
+llama_cpp_default_top_k: 20
+llama_cpp_default_min_p: 0.0
+llama_cpp_default_presence_penalty: 1.5
+llama_cpp_default_repetition_penalty: 1.0
+llama_cpp_instances:
+  - name: llama-cpp-qwen36moe-general
+    model: unsloth/Qwen3.6-35B-A3B-GGUF
+    quant: UD-Q8_K_XL
+    port: 8080
+    gpu: true
+    gpu_layers: -1
+    parallel: 1
+    threads: 0
+    threads_batch: 0
+    memory_max: "16G"
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 20
+    min_p: 0.0
+    presence_penalty: 1.5
+    repetition_penalty: 1.0
+  - name: llama-cpp-qwen36moe-coding
+    model: unsloth/Qwen3.6-35B-A3B-GGUF
+    quant: UD-Q8_K_XL
+    port: 8081
+    gpu: true
+    gpu_layers: -1
+    parallel: 1
+    threads: 0
+    threads_batch: 0
+    memory_max: "16G"
+    temperature: 0.6
+    top_p: 0.95
+    top_k: 20
+    min_p: 0.0
+    presence_penalty: 0.0
+    repetition_penalty: 1.0
+
+llama_cpp_mtp_port_start: 8090
+llama_cpp_mtp_instances:
+  - name: llama-cpp-mtp-qwen36moe-general
+    model: unsloth/Qwen3.6-35B-A3B-GGUF-MTP
+    quant: UD-Q8_K_XL
+    port: 8090
+    gpu: true
+    gpu_layers: -1
+    parallel: 1
+    threads: 0
+    threads_batch: 0
+    memory_max: "16G"
+    spec_draft_n_max: 3
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 20
+    min_p: 0.0
+    presence_penalty: 1.5
+    repetition_penalty: 1.0
+  - name: llama-cpp-mtp-qwen36moe-coding
+    model: unsloth/Qwen3.6-35B-A3B-GGUF-MTP
+    quant: UD-Q8_K_XL
+    port: 8091
+    gpu: true
+    gpu_layers: -1
+    parallel: 1
+    threads: 0
+    threads_batch: 0
+    memory_max: "16G"
+    spec_draft_n_max: 3
+    temperature: 0.6
+    top_p: 0.95
+    top_k: 20
+    min_p: 0.0
+    presence_penalty: 0.0
+    repetition_penalty: 1.0

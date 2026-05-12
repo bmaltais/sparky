@@ -1,0 +1,9 @@
+---
+llama_cpp_enabled: true
+llama_cpp_has_gpu: true
+llama_cpp_default_memory_max: "16G"
+llama_cpp_instances: []
+
+llama_cpp_mtp_enabled: true
+llama_cpp_mtp_has_gpu: true
+llama_cpp_mtp_instances: []

@@ -1,0 +1,6 @@
+---
+- name: Deploy llama.cpp MTP server
+  hosts: sparky
+  become: yes
+  roles:
+    - llama-cpp-mtp
