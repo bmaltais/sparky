@@ -1,0 +1,6 @@
+---
+- name: Deploy llama.cpp server
+  hosts: sparky
+  become: yes
+  roles:
+    - llama-cpp-server

@@ -1,0 +1,34 @@
+[Unit]
+Description=llama.cpp {{ item.name }}
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ llama_cpp_user }}
+Group={{ llama_cpp_user }}
+Environment=CUDA_VISIBLE_DEVICES={{ llama_cpp_gpu_device|default(0) }}
+Environment=PORT={{ item.port }}
+Environment=MODEL={{ item.model }}
+Environment=QUANT={{ item.quant }}
+WorkingDirectory={{ llama_cpp_user_home }}
+ExecStart={{ llama_cpp_build_path }} \
+  -hf ${MODEL}:${QUANT} \
+  --host 0.0.0.0 \
+  --port ${PORT} \
+  --parallel {{ item.parallel|default(1) }} \
+  --gpu-layers {{ item.gpu_layers|default(-1) }} \
+  --threads {{ item.threads|default(0) }} \
+  --threads-batch {{ item.threads_batch|default(0) }} \
+  --temp {{ item.temperature|default(llama_cpp_default_temperature) }} \
+  --top-p {{ item.top_p|default(llama_cpp_default_top_p) }} \
+  --top-k {{ item.top_k|default(llama_cpp_default_top_k) }} \
+  --min-p {{ item.min_p|default(llama_cpp_default_min_p) }} \
+  --presence-penalty {{ item.presence_penalty|default(llama_cpp_default_presence_penalty) }} \
+  --repeat-penalty {{ item.repetition_penalty|default(llama_cpp_default_repetition_penalty) }}
+MemoryMax={{ item.memory_max|default('32G') }}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

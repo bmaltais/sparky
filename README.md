@@ -12,7 +12,7 @@ The stack
 
 1. dgx spark
 1. k3s
-1. llama-cpp / vllm
+1. llama-cpp (MTP PR + unsloth models)
 1. agents
 1. scion
 1. more kubernetes
@@ -38,7 +38,7 @@ There was still a number of things to install to do any real ai things.
 
 - nvm / node / go / uv (needed to install other tools)
 - huggingface (like really...)
-- llama-cpp / vllm / ollama (no way to run models, common ways)
+- llama-cpp / ollama (no way to run models, common ways)
 - agent tools (no claude, opencode, or anything)
 
 My initial steps were something like:
@@ -122,14 +122,17 @@ I'm not going to put any tables here, but I will say:
 
 1. it is usable for interactive session at ~ 1000+ token parsing && 25+ token generating
 1. the `unsloth/Qwen3.6-35B-A3B-GGUF:Q8_K_XL` model is running at ~1600/40
+1. the MTP variant with speculative decoding is noticeably faster
 1. prompt caching makes agents even more responsive
 1. with background agents the speeds may become less important
 
 
-### llama-cpp setup
+### llama-cpp setup (unsloth models + MTP PR)
 
-I'm mainly using llama-cpp, makes it the easier to use Unsloth's quants.
-They are now using a dynamic method that uses evals to decide which weights to shrink.
+This runs the [MTP (Multi-Token Prediction) PR](https://github.com/am17an/llama.cpp/tree/mtp-clean) by default,
+which uses speculative decoding for faster inference. The default model is Unsloth's quantized GGUF format.
+
+#### Manual setup
 
 ```sh
 # clone repo
@@ -147,30 +150,36 @@ cmake --build build --config Release -j --clean-first
 ./build/bin/llama-server -hf unsloth/Qwen3.6-35B-A3B-GGUF:Q8_K_XL --host 0.0.0.0 --port 8080
 ```
 
-This repo also has a `./util/llama-server.sh` you can use to run a model more conveniently.
+#### Ansible setup
 
-### vllm setup
-
-There is currently missing steps from the docs,
-see [this github issue](https://github.com/vllm-project/vllm/issues/31018).
-
-__Warning__, running the same unsloth model crashed `sparky`,
-I think because it uses the full model and OOMs.
-More to figure out here, there should be a proper set of flags.
+This repo includes a minimal ansible setup to deploy llama.cpp as systemd services.
+It targets localhost (run it on the sparky/uranium machine itself).
 
 ```sh
-# setup .vllm
-uv venv .vllm --python 3.12 --seed --managed-python
-source .vllm/bin/activate
+cd ansible
 
-# install vllm and deps
-uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-uv pip install -U vllm --torch-backend=auto --extra-index-url https://wheels.vllm.ai/nightly/cu130
-export TORCH_CUDA_ARCH_LIST=12.1a
+# deploy standard llama.cpp (ports 8080-8081)
+ansible-playbook playbooks/setup-llama.yml
 
-# serve model
-vllm serve unsloth/Qwen3.6-35B-A3B --host 0.0.0.0 --port 8080
+# deploy MTP llama.cpp with speculative decoding (ports 8090-8091)
+ansible-playbook playbooks/setup-llama-mtp.yml
+
+# restart all services
+ansible-playbook playbooks/restart-llama.yml
+
+# stop all services
+ansible-playbook playbooks/stop-llama.yml
 ```
+
+The config in `inventory/host_vars/sparky.yml` defines 4 instances:
+- **llama-cpp-qwen36moe-general** (port 8080) — unsloth/Qwen3.6-35B-A3B-GGUF, Q8_K_XL, temp 1.0
+- **llama-cpp-qwen36moe-coding** (port 8081) — unsloth/Qwen3.6-35B-A3B-GGUF, Q8_K_XL, temp 0.6, no presence penalty
+- **llama-cpp-mtp-qwen36moe-general** (port 8090) — unsloth/Qwen3.6-35B-A3B-GGUF-MTP, Q8_K_XL, speculative decoding with draft_n_max=3
+- **llama-cpp-mtp-qwen36moe-coding** (port 8091) — unsloth/Qwen3.6-35B-A3B-GGUF-MTP, Q8_K_XL, temp 0.6, speculative decoding
+
+To change models or add instances, edit `inventory/host_vars/sparky.yml` and re-run the playbook.
+
+This repo also has a `./util/llama-server.sh` you can use to run a model more conveniently.
 
 
 ## agents
@@ -189,28 +198,46 @@ Fake the models
 *note, this only works with claude and opencode, litellm can be used for the other two alledgedly*
 
 ```sh
-export ANTHROPIC_AUTH_TOKEN=ollama
-export ANTHROPIC_BASE_URL=http://localhost:8080
+export ANTHROPIC_AUTH_TOKEN=llama-cpp-exp
+export ANTHROPIC_BASE_URL=http://localhost:8091/v1  # match port to the model you want (8090=general, 8091=coding)
 
-claude --model Qwen3.6-35B-A3B
-opencode --model llama.cpp/Qwen3.6-35B-A3B
+claude --model Qwen3.6-35B-A3B-MTP
+opencode --model llama.cpp-exp/Qwen3.6-35B-A3B-MTP
 ```
 
-*note:* `~/.config/opencode/opencode.json`
+*note:* `~/.config/opencode/opencode.jsonc`
 
-```json
+```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugin": ["@ramtinj95/opencode-tokenscope"],
+  "model": "llama.cpp-exp/Qwen3.6-35B-A3B-MTP",
   "provider": {
-    "llama.cpp": {
+    "llama.cpp-gen": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "llama-server (local)",
+      "name": "llama-server (gen)",
       "options": {
-        "baseURL": "http://127.0.0.1:8080/v1"
+        "baseURL": "http://192.168.4.31:8090/v1"
       },
       "models": {
-        "Qwen3.6-35B-A3B": {
-          "name": "Qwen3.6-35B-A3B (local)",
+        "Qwen3.6-35B-A3B-MTP": {
+          "name": "Qwen3.6-35B-A3B-MTP (general)",
+          "limit": {
+            "context": 262144,
+            "output": 32768
+          }
+        }
+      }
+    },
+    "llama.cpp-exp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama-server (exp)",
+      "options": {
+        "baseURL": "http://192.168.4.31:8091/v1"
+      },
+      "models": {
+        "Qwen3.6-35B-A3B-MTP": {
+          "name": "Qwen3.6-35B-A3B-MTP (coding)",
           "limit": {
             "context": 262144,
             "output": 32768
@@ -218,6 +245,19 @@ opencode --model llama.cpp/Qwen3.6-35B-A3B
         }
       }
     }
+  },
+  "mcp": {
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp",
+      "enabled": true,
+      "headers": {
+        "x-api-key": "{env:EXA_API_KEY}"
+      }
+    }
+  },
+  "permission": {
+    "websearch": "allow"
   }
 }
 ```
@@ -230,6 +270,10 @@ Scion is a new Google Cloud open source project for running async agents.
 
 - https://googlecloudplatform.github.io/scion/overview/
 - https://github.com/GoogleCloudPlatform/scion
+- https://github.com/verdverm/scion
+
+I've been running this with opencode, which requires some patches, see recent commits on my fork.
+While it was running on the spark, I'm not migrating away (1) to run on my laptop (2) eventually in linux.
 
 ### Setup
 

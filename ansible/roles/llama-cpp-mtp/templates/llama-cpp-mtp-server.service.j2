@@ -1,0 +1,37 @@
+[Unit]
+Description=llama.cpp MTP {{ item.name }}
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ llama_cpp_user }}
+Group={{ llama_cpp_user }}
+Environment=CUDA_VISIBLE_DEVICES={{ llama_cpp_gpu_device|default(0) }}
+Environment=PORT={{ item.port }}
+Environment=MODEL={{ item.model|default('unsloth/Qwen3.6-35B-A3B-GGUF-MTP') }}
+Environment=QUANT={{ item.quant|default('UD-Q4_K_XL') }}
+WorkingDirectory={{ llama_cpp_user_home }}
+ExecStart={{ llama_cpp_mtp_build_path }} \
+  -hf ${MODEL}:${QUANT} \
+  --host 0.0.0.0 \
+  --port ${PORT} \
+  --parallel {{ item.parallel|default(1) }} \
+  --gpu-layers {{ item.gpu_layers|default(-1) }} \
+  --threads {{ item.threads|default(0) }} \
+  --threads-batch {{ item.threads_batch|default(0) }} \
+  -fa on \
+  --spec-type mtp \
+  --spec-draft-n-max {{ item.spec_draft_n_max|default(3) }} \
+  --temp {{ item.temperature|default(1.0) }} \
+  --top-p {{ item.top_p|default(0.95) }} \
+  --top-k {{ item.top_k|default(20) }} \
+  --min-p {{ item.min_p|default(0.0) }} \
+  --presence-penalty {{ item.presence_penalty|default(1.5) }} \
+  --repeat-penalty {{ item.repetition_penalty|default(1.0) }}
+MemoryMax={{ item.memory_max|default('32G') }}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
