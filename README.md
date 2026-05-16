@@ -150,6 +150,13 @@ cmake --build build --config Release -j --clean-first
 ./build/bin/llama-server -hf unsloth/Qwen3.6-35B-A3B-GGUF:Q8_K_XL --host 0.0.0.0 --port 8080
 ```
 
+#### Alternative build tools from https://forums.developer.nvidia.com/t/mtp-llama-cpp-a-look-at-qwen3-6-27b/370298
+
+```sh
+cmake -B build -DGGML_NATIVE=ON -DGGML_CUDA=ON -DGGML_CURL=ON -DCMAKE_CUDA_ARCHITECTURES=121a-real -DGGML_CUDA_FA=ON -DGGML_CUDA_FA_ALL_QUANTS=ON -DGGML_CUDA_FORCE_MMQ=ON -DGGML_CPU_KLEIDIAI=ON
+cmake --build build --config Release -j --clean-first
+```
+
 #### Ansible setup
 
 This repo includes a minimal ansible setup to deploy llama.cpp as systemd services.
