@@ -157,6 +157,59 @@ cmake -B build -DGGML_NATIVE=ON -DGGML_CUDA=ON -DGGML_CURL=ON -DCMAKE_CUDA_ARCHI
 cmake --build build --config Release -j --clean-first
 ```
 
+#### Dual moder run config from https://forums.developer.nvidia.com/t/mtp-llama-cpp-a-look-at-qwen3-6-27b/370298/9?u=bernardlbmi3
+
+llama.cpp is compiled using somewhat standard cmake options: (clone and cd into the directory first)
+
+```sh
+cmake -B build \
+  -DGGML_CUDA=ON \
+  -DLLAMA_CURL=ON \
+  -DGGML_CUDA_FA_ALL_QUANTS=ON \
+  -DCMAKE_CUDA_ARCHITECTURES=121 \
+  -DGGML_NATIVE=ON \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release -j 20 --target llama-cli llama-mtmd-cli llama-server llama-gguf-split
+```
+
+ there is an empty line at the end of the script and I sometimes add or remove some additional options, that is why I have “\” at the end.
+
+```sh
+./build/bin/llama-server -hf unsloth/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf \
+  --alias "qwen3.6-35b" \
+  --n-gpu-layers 999 \
+  --flash-attn on \
+  --no-mmap \
+  --threads 8 \
+  --batch-size 4096 \
+  --ubatch-size 512 \
+  --temp 0.6 \
+  --top-p 0.95 \
+  --top-k 20 \
+  --min-p 0.00 \
+  -c 262144 \
+  --host 0.0.0.0 --port 30000 \
+  -ctk turbo4 -ctv turbo4 \
+  --jinja \
+  --spec-type draft-mtp --spec-draft-n-max 3 \
+
+  ```
+
+  ```sh
+  ./build/bin/llama-server -hf unsloth/gemma-4-26B-A4B-it-UD-Q8_K_XL.gguf \
+  --alias "gemma4-26b" \
+  --n-gpu-layers 999 \
+  --flash-attn on \
+  --no-mmap \
+  --threads 8 \
+  -c 262144 \
+  --host 0.0.0.0 --port 30001 \
+  --jinja \
+  -ctk turbo4 -ctv turbo4 \
+
+  ```
+
 #### Ansible setup
 
 This repo includes a minimal ansible setup to deploy llama.cpp as systemd services.
