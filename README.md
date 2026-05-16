@@ -173,11 +173,20 @@ cmake -B build \
 cmake --build build --config Release -j 20 --target llama-cli llama-mtmd-cli llama-server llama-gguf-split
 ```
 
+Download models locally:
+
+```sh
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/Qwen3.6-35B-A3B-GGUF Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf --local-dir ~/usbdisk/models
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/gemma-4-26B-A4B-it-GGUF gemma-4-26B-A4B-it-UD-Q8_K_XL.gguf --local-dir ~/usbdisk/models
+```
+
  there is an empty line at the end of the script and I sometimes add or remove some additional options, that is why I have “\” at the end.
 
 ```sh
-./build/bin/llama-server -hf unsloth/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf \
-  --alias "qwen3.6-35b" \
+./build/bin/llama-server \
+  -m ~/usbdisk/models/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf \
+  --host 0.0.0.0 --port 8000 \
+  --alias "qwen/qwen3.5" \
   --n-gpu-layers 999 \
   --flash-attn on \
   --no-mmap \
@@ -189,7 +198,6 @@ cmake --build build --config Release -j 20 --target llama-cli llama-mtmd-cli lla
   --top-k 20 \
   --min-p 0.00 \
   -c 262144 \
-  --host 0.0.0.0 --port 30000 \
   -ctk turbo4 -ctv turbo4 \
   --jinja \
   --spec-type draft-mtp --spec-draft-n-max 3 \
@@ -197,14 +205,15 @@ cmake --build build --config Release -j 20 --target llama-cli llama-mtmd-cli lla
   ```
 
   ```sh
-  ./build/bin/llama-server -hf unsloth/gemma-4-26B-A4B-it-UD-Q8_K_XL.gguf \
+  ./build/bin/llama-server \
+  -m ~/usbdisk/models/gemma-4-26B-A4B-it-UD-Q8_K_XL.gguf \
+  --host 0.0.0.0 --port 8001 \
   --alias "gemma4-26b" \
   --n-gpu-layers 999 \
   --flash-attn on \
   --no-mmap \
   --threads 8 \
   -c 262144 \
-  --host 0.0.0.0 --port 30001 \
   --jinja \
   -ctk turbo4 -ctv turbo4 \
 
