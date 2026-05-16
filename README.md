@@ -162,6 +162,10 @@ cmake --build build --config Release -j --clean-first
 llama.cpp is compiled using somewhat standard cmake options: (clone https://github.com/NJannasch/llama.cpp/tree/mtp-turboquant and cd into the directory first)
 
 ```sh
+git clone https://github.com/NJannasch/llama.cpp.git mtp-turboquant
+cd mtp-turboquant
+git checkout mtp-turboquant
+
 cmake -B build \
   -DGGML_CUDA=ON \
   -DLLAMA_CURL=ON \
