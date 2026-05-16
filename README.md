@@ -159,7 +159,7 @@ cmake --build build --config Release -j --clean-first
 
 #### Dual moder run config from https://forums.developer.nvidia.com/t/mtp-llama-cpp-a-look-at-qwen3-6-27b/370298/9?u=bernardlbmi3
 
-llama.cpp is compiled using somewhat standard cmake options: (clone and cd into the directory first)
+llama.cpp is compiled using somewhat standard cmake options: (clone https://github.com/NJannasch/llama.cpp/tree/mtp-turboquant and cd into the directory first)
 
 ```sh
 cmake -B build \
