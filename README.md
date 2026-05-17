@@ -98,7 +98,7 @@ sudo apt update; sudo apt upgrade git
 Install & setup k3s
 
 ```sh
-curl -sfL https://get.k3s.io | sh - 
+curl -sfL https://get.k3s.io | sh -
 mkdir .kube
 sudo cp /etc/rancher/k3s/k8s.yaml .kube/config
 sudo chown $USER:$USER .kube/config
@@ -184,7 +184,7 @@ HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/Qwen3.6-35B-A3B-GGUF Qwen3.6-35B
 HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/gemma-4-26B-A4B-it-GGUF gemma-4-26B-A4B-it-UD-Q8_K_XL.gguf --local-dir ~/usbdisk/models
 ```
 
- there is an empty line at the end of the script and I sometimes add or remove some additional options, that is why I have “\” at the end.
+#### Qwen3.6-35B-A3B production run config
 
 ```sh
 ./build/bin/llama-server \
@@ -196,7 +196,9 @@ HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/gemma-4-26B-A4B-it-GGUF gemma-4-
   --no-mmap \
   --threads 8 \
   --batch-size 4096 \
-  --ubatch-size 512 \
+  --ubatch-size 2048 \
+  --cache-ram 16384 \
+  --cache-reuse 256 \
   --temp 0.6 \
   --top-p 0.95 \
   --top-k 20 \
@@ -204,12 +206,36 @@ HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/gemma-4-26B-A4B-it-GGUF gemma-4-
   -c 262144 \
   -ctk turbo4 -ctv turbo4 \
   --jinja \
-  --spec-type draft-mtp --spec-draft-n-max 3 \
+  --spec-type draft-mtp --spec-draft-n-max 4
+```
 
-  ```
+| Flag | Value | Purpose |
+|---|---|---|
+| `-m` | Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf | Model on USB disk |
+| `--host / --port` | `0.0.0.0:8000` | Listen on all interfaces |
+| `--alias` | `qwen/qwen3.5` | OpenAI-compatible alias |
+| `--n-gpu-layers` | `999` | Offload all layers to GPU |
+| `--flash-attn` | `on` | Flash attention for speed |
+| `--no-mmap` | — | Avoid memory-mapped I/O |
+| `--threads` | `8` | CPU threads for non-GPU work |
+| `--batch-size` | `4096` | KV cache batch size |
+| `--ubatch-size` | `2048` | Micro-batch size for inference |
+| `--cache-ram` | `16384` | RAM cache in MB (off-GPU KV fallback) |
+| `--cache-reuse` | `256` | KV cache reuse depth |
+| `--temp` | `0.6` | Sampling temperature |
+| `--top-p` | `0.95` | Nucleus sampling threshold |
+| `--top-k` | `20` | Top-k sampling |
+| `--min-p` | `0.00` | Minimum probability threshold |
+| `-c` | `262144` | Context length (256K tokens) |
+| `-ctk / -ctv` | `turbo4` | KV cache quantization (turbo4) |
+| `--jinja` | — | Jinja2 template support |
+| `--spec-type` | `draft-mtp` | Multi-token prediction speculative decoding |
+| `--spec-draft-n-max` | `4` | Max draft tokens for speculative decoding |
 
-  ```sh
-  ./build/bin/llama-server \
+#### Gemma-4-26B-A4B run config
+
+```sh
+./build/bin/llama-server \
   -m ~/usbdisk/models/gemma-4-26B-A4B-it-UD-Q8_K_XL.gguf \
   --host 0.0.0.0 --port 8001 \
   --alias "gemma4-26b" \
@@ -219,9 +245,8 @@ HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/gemma-4-26B-A4B-it-GGUF gemma-4-
   --threads 8 \
   -c 262144 \
   --jinja \
-  -ctk turbo4 -ctv turbo4 \
-
-  ```
+  -ctk turbo4 -ctv turbo4
+```
 
 #### Ansible setup
 
@@ -245,10 +270,10 @@ ansible-playbook playbooks/stop-llama.yml
 ```
 
 The config in `inventory/host_vars/sparky.yml` defines 4 instances:
-- **llama-cpp-qwen36moe-general** (port 8080) — unsloth/Qwen3.6-35B-A3B-GGUF, Q8_K_XL, temp 1.0
-- **llama-cpp-qwen36moe-coding** (port 8081) — unsloth/Qwen3.6-35B-A3B-GGUF, Q8_K_XL, temp 0.6, no presence penalty
-- **llama-cpp-mtp-qwen36moe-general** (port 8090) — unsloth/Qwen3.6-35B-A3B-GGUF-MTP, Q8_K_XL, speculative decoding with draft_n_max=3
-- **llama-cpp-mtp-qwen36moe-coding** (port 8091) — unsloth/Qwen3.6-35B-A3B-GGUF-MTP, Q8_K_XL, temp 0.6, speculative decoding
+- **llama-cpp-qwen36moe-general** (port 8080) - unsloth/Qwen3.6-35B-A3B-GGUF, Q8_K_XL, temp 1.0
+- **llama-cpp-qwen36moe-coding** (port 8081) - unsloth/Qwen3.6-35B-A3B-GGUF, Q8_K_XL, temp 0.6, no presence penalty
+- **llama-cpp-mtp-qwen36moe-general** (port 8090) - unsloth/Qwen3.6-35B-A3B-GGUF-MTP, Q8_K_XL, speculative decoding with draft_n_max=3
+- **llama-cpp-mtp-qwen36moe-coding** (port 8091) - unsloth/Qwen3.6-35B-A3B-GGUF-MTP, Q8_K_XL, temp 0.6, speculative decoding
 
 To change models or add instances, edit `inventory/host_vars/sparky.yml` and re-run the playbook.
 
@@ -435,7 +460,7 @@ mkdir hack && cd hack && git init
 scion start hello-go \
   --no-auth \
   --harness opencode \
-  "create a hello world in Go that takes an optional first arg" 
+  "create a hello world in Go that takes an optional first arg"
 
 # inspect the work
 scion list
@@ -471,7 +496,7 @@ scion start hello-py \
   --no-auth \
   --profile remote \
   --harness opencode \
-  "create a hello world in Python that takes an optional first arg" 
+  "create a hello world in Python that takes an optional first arg"
 
 # inspect the work
 scion list
