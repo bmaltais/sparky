@@ -1,2 +1,6 @@
 /hub.db*
 .scion/agents/
+# Generated secrets
+registry/.secrets
+registry/htpasswd-secret.yaml
+registry/auth-secret.yaml

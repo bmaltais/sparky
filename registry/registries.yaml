@@ -1,0 +1,7 @@
+# k3s registry configuration
+# Place at /etc/rancher/k3s/registries.yaml on ALL k3s nodes
+# Then restart k3s: sudo systemctl restart k3s
+registries:
+  configs:
+    "100.101.186.51:5000":
+      insecure: true

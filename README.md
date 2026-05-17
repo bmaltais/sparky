@@ -526,9 +526,60 @@ Let's give an agent access to kubernetes from within kubernetes while running re
 
 We can run more on kubernetes
 
-- registry
+- [registry](#docker-registry)
 - hub
 - agents (already are)
+
+### Docker Registry
+
+A private container registry deployed on k3s at `100.101.186.51:5000`.
+
+**Deploy:**
+
+```sh
+cd registry
+bash deploy.sh
+```
+
+This generates random credentials and saves them to `registry/.secrets` (gitignored, `chmod 600`).
+
+**Configure k3s nodes** to pull from the private registry:
+
+```sh
+bash registry/configure-k3s.sh
+```
+
+This writes `/etc/rancher/k3s/registries.yaml` with `insecure: true` for the registry on all k3s nodes (mini1, mini2, vps1, vps2) and restarts k3s.
+
+**Usage:**
+
+```sh
+# Login
+docker login 100.101.186.51
+# (credentials in registry/.secrets)
+
+# Push
+docker push 100.101.186.51:5000/your-image:tag
+
+# Use in Kubernetes deployments
+image: 100.101.186.51:5000/your-image:tag
+```
+
+> **Note:** The registry is accessible from Tailscale only. The `insecure: true` flag in registries.yaml allows HTTP (no TLS).
+
+**Files:**
+
+| File | Purpose |
+|---|---|
+| `deploy.sh` | Full deployment script (namespace, secrets, PVC, deployment) |
+| `configure-k3s.sh` | Configure all k3s nodes to trust the registry |
+| `namespace.yaml` | `docker-registry` namespace |
+| `pvc.yaml` | Persistent volume for registry data |
+| `deployment.yaml` | Registry deployment + service |
+| `.secrets` | Generated credentials (gitignored) |
+| `htpasswd-secret.yaml` | Auth credentials (generated, gitignored) |
+| `auth-secret.yaml` | Registry HTTP secret (generated, gitignored) |
+| `registries.yaml` | k3s registry config template
 
 
 
