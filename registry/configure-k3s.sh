@@ -7,6 +7,7 @@ REGISTRIES_FILE="/etc/rancher/k3s/registries.yaml"
 
 echo "=== Configuring k3s registries.yaml on all nodes ==="
 echo "Registry: ${REGISTRY_IP}:${REGISTRY_PORT}"
+echo "(hostNetwork registry on mini1)"
 echo ""
 
 # Function to write and restart on a node

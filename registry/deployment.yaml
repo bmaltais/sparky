@@ -36,27 +36,10 @@ spec:
           env:
             - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
               value: /var/lib/registry
-            - name: REGISTRY_AUTH
-              value: htpasswd
-            - name: REGISTRY_AUTH_HTPASSWD_REALM
-              value: Registry
-            - name: REGISTRY_AUTH_HTPASSWD_PATH
-              value: /auth/htpasswd
-            - name: REGISTRY_HTTP_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: registry-auth
-                  key: password
           volumeMounts:
-            - name: auth
-              mountPath: /auth
-              readOnly: true
             - name: storage
               mountPath: /var/lib/registry
       volumes:
-        - name: auth
-          secret:
-            secretName: registry-htpasswd
         - name: storage
           persistentVolumeClaim:
             claimName: registry-storage

@@ -216,7 +216,7 @@ HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/gemma-4-26B-A4B-it-GGUF gemma-4-
 | `--alias` | `qwen/qwen3.5` | OpenAI-compatible alias |
 | `--n-gpu-layers` | `999` | Offload all layers to GPU |
 | `--flash-attn` | `on` | Flash attention for speed |
-| `--no-mmap` | — | Avoid memory-mapped I/O |
+| `--no-mmap` | - | Avoid memory-mapped I/O |
 | `--threads` | `8` | CPU threads for non-GPU work |
 | `--batch-size` | `4096` | KV cache batch size |
 | `--ubatch-size` | `2048` | Micro-batch size for inference |
@@ -228,7 +228,7 @@ HF_HUB_ENABLE_HF_TRANSFER=1 hf download unsloth/gemma-4-26B-A4B-it-GGUF gemma-4-
 | `--min-p` | `0.00` | Minimum probability threshold |
 | `-c` | `262144` | Context length (256K tokens) |
 | `-ctk / -ctv` | `turbo4` | KV cache quantization (turbo4) |
-| `--jinja` | — | Jinja2 template support |
+| `--jinja` | - | Jinja2 template support |
 | `--spec-type` | `draft-mtp` | Multi-token prediction speculative decoding |
 | `--spec-draft-n-max` | `4` | Max draft tokens for speculative decoding |
 
@@ -386,10 +386,19 @@ cd scion
 make all
 ```
 
-Custom buildkitd config
+### Buildkitd config (for insecure registries)
+
+BuildKit (used by `docker buildx`) has its own registry config separate from Docker's.
+For insecure (HTTP) registries, create `/etc/buildkit/buildkitd.toml`:
 
 ```toml
 [registry."host.bridge.internal:5000"]
+  http = true
+  insecure = true
+[registry."mini1:5000"]
+  http = true
+  insecure = true
+[registry."100.101.186.51:5000"]
   http = true
   insecure = true
 [registry."localhost:5000"]
@@ -397,22 +406,46 @@ Custom buildkitd config
   insecure = true
 ```
 
-Custom buildx setup (for local registry)
+### Buildx builder setup
+
+The `scion-builder` uses the `docker-container` driver, which runs BuildKit in its own container.
+This means `localhost` from inside the BuildKit container doesn't reach the host.
+We use `network=host` so the BuildKit container can reach the k3s registry at `100.101.186.51:5000`.
+
+> **Important:** Run `docker buildx` commands as your user (not `sudo`) — the buildx plugin
+> lives in `~/.docker/cli-plugins/` and isn't available to root.
 
 ```sh
-docker buildx create --name scion-builder --driver-opt network=host --config buildkitd.toml --use
+# Create the builder with host networking (run as your user, NOT sudo)
+docker buildx rm scion-builder 2>/dev/null || true
+docker buildx create \
+  --name scion-builder \
+  --driver docker-container \
+  --driver-opt network=host \
+  --use
+docker buildx inspect --bootstrap
+
+# Mount buildkitd.toml into the BuildKit container (so it knows about insecure registries)
+BUILDER=$(docker ps --filter "name=buildx_buildkit" --format "{{.Names}}")
+docker cp /etc/buildkit/buildkitd.toml ${BUILDER}:/etc/buildkit/buildkitd.toml
+docker restart ${BUILDER}
+
+# Verify it's running
+docker buildx ls
 ```
 
-Run the local registry
+### Build the scion images
+
+Pushes to the k3s registry at `100.101.186.51:5000` (open, no auth):
 
 ```sh
-docker run -d registry:3 -p 5000:5000 registry
+./image-build/scripts/build-images.sh --registry 100.101.186.51:5000 --target all --push
 ```
 
-Build the scion images
+Then configure scion to use this registry:
 
 ```sh
-./image-build/scripts/build-images.sh --registry localhost:5000 --target all --push
+scion config set image_registry 100.101.186.51:5000
 ```
 
 Scion init
@@ -558,6 +591,7 @@ We can run more on kubernetes
 ### Docker Registry
 
 A private container registry deployed on k3s at `100.101.186.51:5000`.
+The registry uses `hostNetwork: true` so it's directly accessible on port 5000.
 
 **Deploy:**
 
@@ -566,7 +600,7 @@ cd registry
 bash deploy.sh
 ```
 
-This generates random credentials and saves them to `registry/.secrets` (gitignored, `chmod 600`).
+No authentication — the registry is open (like the local `docker run` one).
 
 **Configure k3s nodes** to pull from the private registry:
 
@@ -579,11 +613,7 @@ This writes `/etc/rancher/k3s/registries.yaml` with `insecure: true` for the reg
 **Usage:**
 
 ```sh
-# Login
-docker login 100.101.186.51
-# (credentials in registry/.secrets)
-
-# Push
+# Push (no login required)
 docker push 100.101.186.51:5000/your-image:tag
 
 # Use in Kubernetes deployments
@@ -596,15 +626,12 @@ image: 100.101.186.51:5000/your-image:tag
 
 | File | Purpose |
 |---|---|
-| `deploy.sh` | Full deployment script (namespace, secrets, PVC, deployment) |
+| `deploy.sh` | Full deployment script (namespace, PVC, deployment) |
 | `configure-k3s.sh` | Configure all k3s nodes to trust the registry |
 | `namespace.yaml` | `docker-registry` namespace |
 | `pvc.yaml` | Persistent volume for registry data |
-| `deployment.yaml` | Registry deployment + service |
-| `.secrets` | Generated credentials (gitignored) |
-| `htpasswd-secret.yaml` | Auth credentials (generated, gitignored) |
-| `auth-secret.yaml` | Registry HTTP secret (generated, gitignored) |
-| `registries.yaml` | k3s registry config template
+| `deployment.yaml` | Registry deployment (hostNetwork, no auth) |
+| `service.yaml` | ClusterIP service (for k8s internal access) |
 
 
 
